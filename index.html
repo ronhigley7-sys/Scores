@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scoreboard — NFL + College Football</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --turf-dark:#122a1f; --turf:#1b3a2b; --turf-light:#254a37;
+    --chalk:#f2efe6; --chalk-dim:#a9b8ac;
+    --amber:#f5b942; --amber-dim:#8a7038; --line:#3a5a48;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--turf-dark);
+    background-image:repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 42px);
+    color:var(--chalk); font-family:'Oswald', sans-serif; min-height:100vh; padding-bottom:40px;
+  }
+  header{
+    padding:20px 18px 14px; border-bottom:3px solid var(--amber);
+    background:linear-gradient(180deg, var(--turf) 0%, var(--turf-dark) 100%);
+    position:sticky; top:0; z-index:10;
+  }
+  .brand{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+  h1{margin:0; font-size:1.5rem; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;}
+  h1 span{color:var(--amber);}
+  .refresh-btn{
+    background:var(--turf-light); border:1px solid var(--amber-dim); color:var(--amber);
+    font-family:'JetBrains Mono', monospace; font-size:0.7rem; padding:6px 10px; border-radius:3px;
+    cursor:pointer; text-transform:uppercase; letter-spacing:0.5px;
+  }
+  .refresh-btn:active{transform:scale(0.97);}
+  .sub{margin:6px 0 0; font-size:0.72rem; color:var(--chalk-dim); font-family:'JetBrains Mono', monospace; line-height:1.5;}
+  .tabs{display:flex; gap:6px; margin-top:14px; overflow-x:auto; padding-bottom:2px;}
+  .tab{
+    flex:0 0 auto; text-align:center; padding:9px 12px; background:var(--turf-light);
+    border:1px solid var(--line); border-radius:3px; font-size:0.78rem; font-weight:600;
+    letter-spacing:0.4px; text-transform:uppercase; cursor:pointer; color:var(--chalk-dim); white-space:nowrap;
+  }
+  .tab.active{background:var(--amber); color:var(--turf-dark); border-color:var(--amber);}
+  main{padding:0 14px; max-width:660px; margin:0 auto;}
+  .pinned{max-width:660px; margin:16px auto 0; padding:0 14px;}
+  .pinned-label{font-family:'JetBrains Mono', monospace; font-size:0.68rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--amber); margin:0 4px 8px;}
+  .pinned-cards{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .pin-card{background:linear-gradient(145deg, var(--turf-light), var(--turf)); border:1px solid var(--amber-dim); border-radius:5px; padding:11px 12px; min-height:70px;}
+  .pin-card .pt-name{font-weight:700; font-size:0.9rem;}
+  .pin-card .pt-line{font-family:'JetBrains Mono', monospace; font-size:0.7rem; color:var(--chalk-dim); margin-top:5px; line-height:1.5;}
+  .pin-card .pt-status{display:inline-block; margin-top:5px; font-family:'JetBrains Mono', monospace; font-size:0.68rem; font-weight:700; color:var(--amber);}
+  .section{margin-top:20px;}
+  .section-head{display:flex; align-items:center; gap:8px; margin:0 4px 10px;}
+  .section-head .dot{width:9px; height:9px; border-radius:50%; background:var(--amber-dim);}
+  .section-head.live .dot{background:#ff5a4e; animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,90,78,0.55);}70%{box-shadow:0 0 0 8px rgba(255,90,78,0);}100%{box-shadow:0 0 0 0 rgba(255,90,78,0);}}
+  .section-head h2{margin:0; font-size:0.76rem; letter-spacing:1.5px; text-transform:uppercase; font-weight:600; color:var(--chalk-dim);}
+  .section-head .count{margin-left:auto; font-family:'JetBrains Mono', monospace; font-size:0.7rem; color:var(--chalk-dim);}
+  .card{background:var(--turf); border:1px solid var(--line); border-radius:4px; padding:12px 14px; margin-bottom:8px;}
+  .matchup{display:flex; flex-direction:column; gap:6px;}
+  .team-row{display:flex; align-items:center; justify-content:space-between;}
+  .team-name{font-size:0.92rem; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:10px; display:flex; align-items:center; gap:6px;}
+  .rank-chip{font-family:'JetBrains Mono', monospace; font-size:0.62rem; color:var(--amber); border:1px solid var(--amber-dim); border-radius:2px; padding:0px 4px; flex:0 0 auto;}
+  .team-row.winner .team-name{font-weight:700; color:#fff;}
+  .score{font-family:'JetBrains Mono', monospace; font-size:1.02rem; font-weight:700; color:var(--chalk-dim); min-width:26px; text-align:right;}
+  .team-row.winner .score{color:var(--amber);}
+  .meta{display:flex; justify-content:space-between; margin-top:6px; padding-top:6px; border-top:1px dashed var(--line); font-family:'JetBrains Mono', monospace; font-size:0.7rem; color:var(--chalk-dim);}
+  .meta .status-live{color:#ff8a7f; font-weight:700; letter-spacing:0.5px;}
+  .channel-tag{display:inline-flex; align-items:center; gap:4px; font-family:'JetBrains Mono', monospace; font-size:0.68rem; padding:2px 6px; border-radius:2px; border:1px solid var(--line); color:var(--chalk-dim);}
+  .channel-tag.on-hulu{border-color:var(--amber-dim); color:var(--amber);}
+  .channel-tag.off-hulu{border-color:#5a3a3a; color:#d98a7a;}
+  details{margin-top:4px;}
+  summary{cursor:pointer; font-family:'JetBrains Mono', monospace; font-size:0.74rem; color:var(--amber); padding:8px 4px; list-style:none;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸ ";}
+  details[open] summary:before{content:"▾ ";}
+  .empty, .loading{color:var(--chalk-dim); font-size:0.85rem; font-family:'JetBrains Mono', monospace; padding:20px 4px; text-align:center;}
+  .conf-head{font-size:1rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin:22px 4px 4px; padding-bottom:6px; border-bottom:2px solid var(--amber);}
+  footer{max-width:660px; margin:26px auto 0; padding:0 18px; color:var(--chalk-dim); font-family:'JetBrains Mono', monospace; font-size:0.66rem; line-height:1.6; text-align:center;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>Score<span>board</span></h1>
+    <button class="refresh-btn" id="refreshBtn">↻ Refresh</button>
+  </div>
+  <p class="sub" id="asof">Loading live scores…</p>
+  <p class="sub">Live data from ESPN's public scoreboard. Channel tags show Hulu + Live TV availability.</p>
+  <div class="tabs">
+    <div class="tab active" data-view="nfl">NFL</div>
+    <div class="tab" data-view="college">College</div>
+    <div class="tab" data-view="top25">Top 25</div>
+    <div class="tab" data-view="sec">SEC</div>
+    <div class="tab" data-view="bigten">Big Ten</div>
+  </div>
+</header>
+
+<div class="pinned">
+  <p class="pinned-label">Your teams</p>
+  <div class="pinned-cards" id="pinned"><div class="loading">Loading…</div></div>
+</div>
+
+<main id="main"><div class="loading">Loading live scores…</div></main>
+
+<footer>
+  Data via ESPN's public scoreboard API. Auto-refreshes every 60s while this page is open.
+</footer>
+
+<script>
+const HULU_CHANNELS = ['ABC','CBS','NBC','FOX','FS1','FS2','CW','ESPN','ESPN2','ESPNU','ESPNEWS','ACCN','ACC NETWORK','SECN','SEC NETWORK','BTN','CBSSN','NFLN','NFL NETWORK'];
+const REFRESH_MS = 60000;
+
+let cache = { nfl: [], cfb: [], rankings: [] };
+
+function isHulu(name){
+  if(!name) return null;
+  const n = name.toUpperCase();
+  return HULU_CHANNELS.some(h => n === h || n.includes(h));
+}
+
+function channelFromEvent(ev){
+  const b = ev.competitions?.[0]?.broadcasts?.[0]?.names?.[0]
+    || ev.competitions?.[0]?.geoBroadcasts?.[0]?.media?.shortName;
+  return b || null;
+}
+
+function channelTag(name){
+  if(!name) return '';
+  const hulu = isHulu(name);
+  const cls = hulu === true ? 'on-hulu' : (hulu === false ? 'off-hulu' : '');
+  const icon = hulu === true ? '✓ Hulu' : (hulu === false ? '✕ not on Hulu' : '');
+  return `<span class="channel-tag ${cls}">${name}${icon ? ' · '+icon : ''}</span>`;
+}
+
+function statusInfo(ev){
+  const st = ev.status?.type;
+  if(!st) return {bucket:'upcoming', text:''};
+  if(st.state === 'in'){
+    const period = ev.status.period;
+    const clock = ev.status.displayClock;
+    let label = st.name === 'STATUS_HALFTIME' ? 'HALF' : `Q${period} · ${clock}`;
+    return {bucket:'live', text:label};
+  }
+  if(st.state === 'post'){
+    return {bucket:'final', text:'FINAL'};
+  }
+  return {bucket:'upcoming', text: st.shortDetail || st.detail || 'Scheduled'};
+}
+
+function renderEventCard(ev, opts){
+  opts = opts || {};
+  const comp = ev.competitions[0];
+  const home = comp.competitors.find(c => c.homeAway === 'home');
+  const away = comp.competitors.find(c => c.homeAway === 'away');
+  const info = statusInfo(ev);
+  const showScore = info.bucket === 'live' || info.bucket === 'final';
+  const homeScore = showScore ? home.score : '';
+  const awayScore = showScore ? away.score : '';
+  const homeWin = info.bucket === 'final' && Number(home.score) > Number(away.score);
+  const awayWin = info.bucket === 'final' && Number(away.score) > Number(home.score);
+  const chName = channelFromEvent(ev);
+  const rankBadge = (t) => (t.curatedRank && t.curatedRank.current && t.curatedRank.current <= 25)
+    ? `<span class="rank-chip">#${t.curatedRank.current}</span>` : '';
+  return `
+  <div class="card">
+    <div class="matchup">
+      <div class="team-row ${awayWin?'winner':''}">
+        <span class="team-name">${rankBadge(away)}${away.team.shortDisplayName || away.team.displayName}</span>
+        <span class="score">${showScore ? awayScore : ''}</span>
+      </div>
+      <div class="team-row ${homeWin?'winner':''}">
+        <span class="team-name">${rankBadge(home)}${home.team.shortDisplayName || home.team.displayName}</span>
+        <span class="score">${showScore ? homeScore : ''}</span>
+      </div>
+    </div>
+    <div class="meta">
+      <span class="${info.bucket==='live'?'status-live':''}">${info.text}</span>
+      <span>${info.bucket === 'upcoming' ? (ev.status.type.shortDetail||'') : ''}</span>
+    </div>
+    ${chName ? `<div style="margin-top:8px;">${channelTag(chName)}</div>` : ''}
+  </div>`;
+}
+
+function renderGroupedSection(title, events, opts){
+  opts = opts || {};
+  if(!events.length) return '';
+  const head = `<div class="section-head ${opts.live?'live':''}"><span class="dot"></span><h2>${title}</h2><span class="count">${events.length}</span></div>`;
+  if(opts.collapsible && events.length > 6){
+    return `<div class="section">${head}
+      <div>${events.slice(0,4).map(e=>renderEventCard(e)).join('')}</div>
+      <details><summary>Show ${events.length-4} more</summary>${events.slice(4).map(e=>renderEventCard(e)).join('')}</details>
+    </div>`;
+  }
+  return `<div class="section">${head}${events.map(e=>renderEventCard(e)).join('')}</div>`;
+}
+
+function renderBucketed(events){
+  const live = events.filter(e => statusInfo(e).bucket === 'live');
+  const upcoming = events.filter(e => statusInfo(e).bucket === 'upcoming');
+  const final = events.filter(e => statusInfo(e).bucket === 'final');
+  let html = '';
+  html += renderGroupedSection('Live now', live, {live:true});
+  html += renderGroupedSection('Upcoming', upcoming, {collapsible:true});
+  html += renderGroupedSection('Final', final, {collapsible:true});
+  return html || '<div class="empty">No games found.</div>';
+}
+
+const NFL_DIVISIONS = {
+  AFC: ['East','North','South','West'],
+  NFC: ['East','North','South','West']
+};
+const TEAM_DIVISION = {
+  BUF:'AFC East', MIA:'AFC East', NE:'AFC East', NYJ:'AFC East',
+  BAL:'AFC North', CIN:'AFC North', CLE:'AFC North', PIT:'AFC North',
+  HOU:'AFC South', IND:'AFC South', JAX:'AFC South', TEN:'AFC South',
+  DEN:'AFC West', KC:'AFC West', LV:'AFC West', LAC:'AFC West',
+  DAL:'NFC East', NYG:'NFC East', PHI:'NFC East', WSH:'NFC East',
+  CHI:'NFC North', DET:'NFC North', GB:'NFC North', MIN:'NFC North',
+  ATL:'NFC South', CAR:'NFC South', NO:'NFC South', TB:'NFC South',
+  ARI:'NFC West', LAR:'NFC West', SF:'NFC West', SEA:'NFC West'
+};
+
+function renderNFL(){
+  let html = '';
+  ['AFC','NFC'].forEach(conf=>{
+    html += `<div class="conf-head">${conf}</div>`;
+    ['East','North','South','West'].forEach(divShort=>{
+      const div = conf+' '+divShort;
+      const games = cache.nfl.filter(ev=>{
+        const comp = ev.competitions[0];
+        const home = comp.competitors.find(c=>c.homeAway==='home');
+        return TEAM_DIVISION[home.team.abbreviation] === div;
+      });
+      if(!games.length) return;
+      html += `<div class="section-head"><span class="dot"></span><h2>${div}</h2></div>`;
+      html += games.map(e=>renderEventCard(e)).join('');
+    });
+  });
+  document.getElementById('main').innerHTML = html || '<div class="empty">No NFL games found.</div>';
+}
+
+function renderCollege(){
+  document.getElementById('main').innerHTML = renderBucketed(cache.cfb);
+}
+
+function renderTop25(){
+  const ranked = cache.rankings.slice(0,25);
+  if(!ranked.length){
+    document.getElementById('main').innerHTML = '<div class="empty">Rankings unavailable.</div>';
+    return;
+  }
+  const html = ranked.map(r=>{
+    const ev = cache.cfb.find(e => {
+      const comp = e.competitions[0];
+      return comp.competitors.some(c => c.team.id === r.team.id);
+    });
+    if(!ev){
+      return `<div class="card">
+        <div class="matchup"><div class="team-row"><span class="team-name"><span class="rank-chip">#${r.current}</span> ${r.team.nickname || r.team.displayName}</span></div></div>
+        <div class="meta"><span>No game found this week</span><span></span></div>
+      </div>`;
+    }
+    return renderEventCard(ev);
+  }).join('');
+  document.getElementById('main').innerHTML = html;
+}
+
+function renderConference(groupEvents){
+  document.getElementById('main').innerHTML = renderBucketed(groupEvents);
+}
+
+function renderPinned(){
+  const findTeam = (list, matchFn) => list.find(ev => ev.competitions[0].competitors.some(matchFn));
+  const michEv = findTeam(cache.cfb, c => /michigan wolverines/i.test(c.team.displayName));
+  const billsEv = findTeam(cache.nfl, c => c.team.abbreviation === 'BUF');
+
+  const cardFor = (ev, label) => {
+    if(!ev) return `<div class="pin-card"><div class="pt-name">${label}</div><div class="pt-line">No game found</div></div>`;
+    const comp = ev.competitions[0];
+    const home = comp.competitors.find(c=>c.homeAway==='home');
+    const away = comp.competitors.find(c=>c.homeAway==='away');
+    const isHome = /michigan wolverines/i.test(home.team.displayName) || home.team.abbreviation === 'BUF';
+    const self = isHome ? home : away;
+    const opp = isHome ? away : home;
+    const info = statusInfo(ev);
+    const chName = channelFromEvent(ev);
+    return `<div class="pin-card">
+      <div class="pt-name">${self.team.shortDisplayName}</div>
+      <div class="pt-line">${isHome?'vs':'at'} ${opp.team.shortDisplayName}</div>
+      <div class="pt-status">${info.text || ev.status.type.shortDetail}</div>
+      <div style="margin-top:6px;">${channelTag(chName)}</div>
+    </div>`;
+  };
+
+  document.getElementById('pinned').innerHTML =
+    cardFor(michEv, 'Michigan') + cardFor(billsEv, 'Buffalo Bills');
+}
+
+async function fetchJSON(url){
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('fetch failed: '+url);
+  return res.json();
+}
+
+let activeView = 'nfl';
+
+async function loadAll(){
+  document.getElementById('asof').textContent = 'Refreshing…';
+  try{
+    const [nflData, cfbData, rankData] = await Promise.all([
+      fetchJSON('https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard'),
+      fetchJSON('https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=80&limit=200'),
+      fetchJSON('https://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings')
+    ]);
+    cache.nfl = nflData.events || [];
+    cache.cfb = cfbData.events || [];
+    const poll = (rankData.rankings || []).find(r => /AP Top 25/i.test(r.name)) || rankData.rankings?.[0];
+    cache.rankings = poll ? poll.ranks : [];
+
+    document.getElementById('asof').textContent =
+      'Live · updated ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'});
+
+    renderPinned();
+    renderView(activeView);
+  }catch(err){
+    document.getElementById('asof').textContent = 'Could not load live data — will retry.';
+    console.error(err);
+  }
+}
+
+function renderView(view){
+  activeView = view;
+  if(view === 'nfl') renderNFL();
+  else if(view === 'college') renderCollege();
+  else if(view === 'top25') renderTop25();
+  else if(view === 'sec' || view === 'bigten'){
+    const groupId = view === 'sec' ? 8 : 5;
+    document.getElementById('main').innerHTML = '<div class="loading">Loading…</div>';
+    fetchJSON(`https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=${groupId}&limit=100`)
+      .then(data => renderConference(data.events || []))
+      .catch(() => { document.getElementById('main').innerHTML = '<div class="empty">Could not load.</div>'; });
+  }
+}
+
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    renderView(tab.dataset.view);
+  });
+});
+
+document.getElementById('refreshBtn').addEventListener('click', loadAll);
+
+loadAll();
+setInterval(loadAll, REFRESH_MS);
+</script>
+</body>
+</html>
