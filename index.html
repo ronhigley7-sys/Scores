@@ -76,6 +76,15 @@
   .empty, .loading{color:var(--chalk-dim); font-size:0.85rem; font-family:'JetBrains Mono', monospace; padding:20px 4px; text-align:center;}
   .conf-head{font-size:1rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin:22px 4px 4px; padding-bottom:6px; border-bottom:2px solid var(--amber);}
   footer{max-width:660px; margin:26px auto 0; padding:0 18px; color:var(--chalk-dim); font-family:'JetBrains Mono', monospace; font-size:0.66rem; line-height:1.6; text-align:center;}
+
+  .live-ticker{background:#091d15;border-bottom:2px solid var(--amber);padding:10px 14px;overflow:hidden}
+  .ticker-heading{font:700 .72rem 'JetBrains Mono',monospace;color:var(--amber);letter-spacing:1px;margin-bottom:7px}
+  .ticker-window{overflow-x:auto;scrollbar-width:thin}
+  .ticker-items{display:flex;gap:12px;align-items:center;min-width:max-content}
+  .ticker-game{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:4px;background:var(--turf);padding:8px 11px;font:700 .75rem 'JetBrains Mono',monospace}
+  .ticker-league{color:var(--amber);font-size:.65rem}
+  .ticker-status{color:#ff8a7f;font-size:.65rem}
+  .ticker-empty{font:.75rem 'JetBrains Mono',monospace;color:var(--chalk-dim)}
 </style>
 </head>
 <body>
@@ -99,6 +108,10 @@
   </div>
 </header>
 
+<section class="live-ticker" aria-label="NFL and NCAA football games currently playing">
+  <div class="ticker-heading">● LIVE NOW · NFL + NCAA · UPDATES EVERY 5 MIN</div>
+  <div class="ticker-window"><div class="ticker-items" id="liveTicker" aria-live="polite"><span class="ticker-empty">Checking live games…</span></div></div>
+</section>
 <div class="pinned">
   <p class="pinned-label">Your teams</p>
   <div class="pinned-cards" id="pinned"><div class="loading">Loading…</div></div>
@@ -107,12 +120,12 @@
 <main id="main"><div class="loading">Loading live scores…</div></main>
 
 <footer>
-  Data via ESPN's public scoreboard API. Auto-refreshes every 60s while this page is open.
+  Data via ESPN's public scoreboard API. Auto-refreshes every 5 minutes while this page is open.
 </footer>
 
 <script>
 const HULU_CHANNELS = ['ABC','CBS','NBC','FOX','FS1','FS2','CW','ESPN','ESPN2','ESPNU','ESPNEWS','ACCN','ACC NETWORK','SECN','SEC NETWORK','BTN','CBSSN','NFLN','NFL NETWORK'];
-const REFRESH_MS = 60000;
+const REFRESH_MS = 300000;
 
 let cache = { nfl: [], cfb: [], rankings: [] };
 
@@ -357,6 +370,31 @@ function renderLegacy(){
     </div>`;
 }
 
+function escapeTicker(value){
+  return String(value ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function renderLiveTicker(){
+  const ticker = document.getElementById('liveTicker');
+  const liveGames = [
+    ...cache.nfl.filter(e=>statusInfo(e).bucket==='live').map(e=>({ev:e,league:'NFL'})),
+    ...cache.cfb.filter(e=>statusInfo(e).bucket==='live').map(e=>({ev:e,league:'NCAA'}))
+  ];
+  if(!liveGames.length){
+    ticker.innerHTML='<span class="ticker-empty">No NFL or NCAA football games currently in progress.</span>';
+    return;
+  }
+  ticker.innerHTML=liveGames.map(({ev,league})=>{
+    const teams=ev.competitions?.[0]?.competitors || [];
+    const away=teams.find(t=>t.homeAway==='away');
+    const home=teams.find(t=>t.homeAway==='home');
+    if(!away||!home)return '';
+    const name=t=>escapeTicker(t.team?.abbreviation||t.team?.shortDisplayName||t.team?.displayName||'Team');
+    return '<div class="ticker-game"><span class="ticker-league">'+league+'</span>'+
+      '<span>'+name(away)+' '+escapeTicker(away.score ?? '0')+'</span>'+
+      '<span>–</span><span>'+name(home)+' '+escapeTicker(home.score ?? '0')+'</span>'+
+      '<span class="ticker-status">'+escapeTicker(statusInfo(ev).text)+'</span></div>';
+  }).join('');
+}
 function renderPinned(){
   const findTeam = (list, matchFn) => list.find(ev => ev.competitions[0].competitors.some(matchFn));
   const michEv = findTeam(cache.cfb, c => /michigan wolverines/i.test(c.team.displayName));
@@ -410,6 +448,7 @@ async function loadAll(){
     document.getElementById('asof').textContent =
       'Live · updated ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'});
 
+    renderLiveTicker();
     renderPinned();
     renderView(activeView);
   }catch(err){
