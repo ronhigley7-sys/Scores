@@ -17,10 +17,10 @@ main{padding:24px 16px;max-width:1250px;margin:auto}
 .status{font-size:1.3rem;color:#ffb2a9;font-weight:800;border-top:1px solid #56765e;padding-top:14px;margin-top:15px}
 .empty{font-size:clamp(1.4rem,3vw,2rem);padding:40px 12px;text-align:center;grid-column:1/-1}
 #updated{font-size:1rem;color:#b9cdbd;margin-top:24px}
-</style></head><body>
+.watch{display:inline-block;margin-top:14px;padding:13px 17px;background:#f5b942;color:#10271c;border-radius:7px;font-size:1.15rem;font-weight:800;text-decoration:none}.network{font-size:1.1rem;color:#e8e9db;margin-top:10px}.note{font-size:1rem;color:#c7d5c9;line-height:1.5}</style></head><body>
 <header><h1>● LIVE FOOTBALL SCORES</h1><p class="subtitle">NFL + NCAA · Only games currently in progress · Refreshes every 5 minutes</p>
 <nav><a href="scores.html">All scores &amp; tabs →</a><button id="refresh">↻ Refresh now</button></nav></header>
-<main><div id="games"><div class="empty">Checking live games…</div></div><p id="updated"></p></main>
+<main><p class="note">For games carried by Hulu + Live TV, select “Open Hulu Live TV” and choose the listed channel in Hulu’s Live Guide. Availability depends on your plan and location.</p><div id="games"><div class="empty">Checking live games…</div></div><p id="updated"></p></main>
 <script>
 const sources=[['NFL','https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard'],['NCAA','https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=80&limit=500']];
 const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -40,9 +40,15 @@ async function update(){
  const home=competitors.find(c=>c.homeAway==='home');
  if(!away||!home)return '';
  const team=c=>'<div class="team"><span>'+escapeHTML(c.team?.shortDisplayName||c.team?.displayName)+'</span><span class="score">'+escapeHTML(c.score??'0')+'</span></div>';
+ const broadcasts=event.competitions?.[0]?.broadcasts||[];
+ const channels=[...new Set([...broadcasts.flatMap(b=>b.names||[]),...(event.competitions?.[0]?.geoBroadcasts||[]).map(b=>b.media?.shortName).filter(Boolean)])];
+ const supported=['ABC','CBS','NBC','FOX','ESPN','ESPN2','ESPNU','ESPNEWS','FS1','FS2','BTN','BIG TEN NETWORK','SECN','SEC NETWORK','ACCN','ACC NETWORK','CW','NFL NETWORK','NFLN','CBSSN','CBS SPORTS NETWORK'];
+ const onHulu=channels.some(c=>supported.some(x=>c.toUpperCase()===x));
+ const watch=onHulu?'<a class="watch" href="https://www.hulu.com/live-tv" target="_blank" rel="noopener noreferrer">▶ Open Hulu Live TV</a>':'';
+ const network=channels.length?'<div class="network">TV: '+channels.map(escapeHTML).join(', ')+'</div>':'<div class="network">TV channel not listed</div>';
  const period=event.status?.period;
  const label=event.status?.type?.name==='STATUS_HALFTIME'?'HALFTIME':('Q'+period+' · '+(event.status?.displayClock||''));
- return '<article class="game"><div class="league">● '+league+' LIVE</div>'+team(away)+team(home)+'<div class="status">'+escapeHTML(label)+'</div></article>';
+ return '<article class="game"><div class="league">● '+league+' LIVE</div>'+team(away)+team(home)+'<div class="status">'+escapeHTML(label)+'</div>'+network+watch+'</article>';
  }).join(''):'<div class="empty">No NFL or NCAA football games currently in progress.</div>';
  updated.textContent='Last checked: '+new Date().toLocaleTimeString();
  }catch(e){updated.textContent='Could not refresh scores. Retrying in 5 minutes.';console.error(e)}
